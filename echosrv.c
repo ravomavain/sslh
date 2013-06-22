@@ -117,7 +117,7 @@ void start_echo(int fd)
     }
 }
 
-void main_loop(int listen_sockets[], int num_addr_listen)
+void main_loop(int listen_sockets[], int num_addr_listen, int *map_socket)
 {
     int in_socket, i;
 
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 
    num_addr_listen = start_listen_sockets(&listen_sockets, addr_listen);
 
-   main_loop(listen_sockets, num_addr_listen);
+   main_loop(listen_sockets, num_addr_listen, NULL);
 
    return 0;
 }

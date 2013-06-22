@@ -22,6 +22,7 @@
 
 #include "common.h"
 #include "probe.h"
+#include "ip-map.h"
 
 const char* server_type = "sslh-fork";
 
@@ -109,9 +110,13 @@ void start_shoveler(int in_socket)
 
    log_connection(&cnx);
 
+   add_ip_fd(out_socket, in_socket);
+
    flush_defered(&cnx.q[1]);
 
    shovel(&cnx);
+
+   remove_ip_fd(out_socket);
 
    close(in_socket);
    close(out_socket);
@@ -134,12 +139,12 @@ void stop_listeners(int sig)
     }
 }
 
-void main_loop(int listen_sockets[], int num_addr_listen)
+void main_loop(int listen_sockets[], int num_addr_listen, int *map_socket)
 {
     int in_socket, i, res;
     struct sigaction action;
 
-    listener_pid_number = num_addr_listen;
+    listener_pid_number = num_addr_listen+1;
     listener_pid = malloc(listener_pid_number * sizeof(listener_pid[0]));
 
     /* Start one process for each listening address */
@@ -162,6 +167,32 @@ void main_loop(int listen_sockets[], int num_addr_listen)
                 close(in_socket);
             }
         }
+        close(listen_sockets[i]);
+    }
+
+    if (map_socket) {
+        if (!(listener_pid[num_addr_listen] = fork())) {
+            while (1)
+            {
+                in_socket = accept(*map_socket, 0, 0);
+                if (verbose) fprintf(stderr, "accepted fd %d\n", in_socket);
+
+                if (!fork())
+                {
+                    close(*map_socket);
+                    struct map_queue map_q = new_map_queue(in_socket);
+                    while(1)
+                    {
+                       res = handle_connection(&map_q);
+                       if (!res)
+                           exit(0);
+                    }
+                    exit(0);
+                }
+                close(in_socket);
+            }
+        }
+        close(*map_socket);
     }
 
     /* Set SIGTERM to "stop_listeners" which further kills all listener

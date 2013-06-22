@@ -26,7 +26,7 @@ int inetd = 0;
 int foreground = 0;
 int background = 0;
 int numeric = 0;
-const char *user_name, *pid_file;
+const char *user_name, *pid_file, *map_sock_path;
 
 struct addrinfo *addr_listen = NULL; /* what addresses do we listen to? */
 

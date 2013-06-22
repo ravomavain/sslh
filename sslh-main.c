@@ -26,9 +26,11 @@
 #include <libconfig.h>
 #endif
 #include <regex.h>
+#include <sys/stat.h>
 
 #include "common.h"
 #include "probe.h"
+#include "ip-map.h"
 
 const char* USAGE_STRING =
 "sslh " VERSION "\n" \
@@ -280,6 +282,7 @@ static int config_parse(char *filename, struct addrinfo **listen, struct proto *
 
     config_lookup_string(&config, "user", &user_name);
     config_lookup_string(&config, "pidfile", &pid_file);
+    config_lookup_string(&config, "mapsock", &map_sock_path);
 
     config_listen(&config, listen);
     config_protocols(&config, prots);
@@ -428,6 +431,10 @@ next_arg:
             pid_file = optarg;
             break;
 
+        case 'm':
+            map_sock_path = optarg;
+            break;
+
         case 'v':
             verbose++;
             break;
@@ -464,11 +471,12 @@ int main(int argc, char *argv[])
    int res, num_addr_listen;
    struct proto* protocols = NULL;
 
-   int *listen_sockets;
+   int *listen_sockets, *map_socket;
 
    /* Init defaults */
    pid_file = NULL;
    user_name = NULL;
+   map_sock_path = NULL;
 
    cmdline_config(argc, argv, &protocols);
    parse_cmdline(argc, argv, protocols);
@@ -484,6 +492,27 @@ int main(int argc, char *argv[])
        printsettings();
 
    num_addr_listen = start_listen_sockets(&listen_sockets, addr_listen);
+
+   if(map_sock_path)
+   {
+      struct sockaddr_un map_sockaddr;
+      map_sockaddr.sun_family = AF_UNIX;
+      strcpy(map_sockaddr.sun_path, map_sock_path);
+      unlink(map_sockaddr.sun_path);
+
+      struct addrinfo map_addr_listen;
+      memset(&map_addr_listen, 0, sizeof(map_addr_listen));
+      map_addr_listen.ai_addr = (struct sockaddr *)&map_sockaddr;
+      map_addr_listen.ai_addrlen = strlen(map_sockaddr.sun_path) + sizeof(map_sockaddr.sun_family);
+
+      int s;
+      map_socket = &s;
+      mode_t umask_ = umask(0000);
+      res = start_listen_sockets(&map_socket, &map_addr_listen);
+      umask(umask_);
+   }
+   else
+      map_socket = NULL;
 
    if (!foreground) {
        if (fork() > 0) exit(0); /* Detach */
@@ -506,7 +535,17 @@ int main(int argc, char *argv[])
    /* Open syslog connection */
    setup_syslog(argv[0]);
 
-   main_loop(listen_sockets, num_addr_listen);
+   ip_map_init();
+
+   main_loop(listen_sockets, num_addr_listen, map_socket);
+
+   ip_map_close();
+
+   if(map_sock_path)
+       unlink(map_sock_path);
+
+   if (pid_file)
+       unlink(pid_file);
 
    return 0;
 }

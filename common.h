@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -104,12 +105,12 @@ extern int probing_timeout, verbose, inetd, foreground, background, numeric;
 extern struct sockaddr_storage addr_ssl, addr_ssh, addr_openvpn;
 extern struct addrinfo *addr_listen;
 extern const char* USAGE_STRING;
-extern const char* user_name, *pid_file;
+extern const char* user_name, *pid_file, *map_sock_path;
 extern const char* server_type;
 
 /* sslh-fork.c */
 void start_shoveler(int);
 
-void main_loop(int *listen_sockets, int num_addr_listen);
+void main_loop(int *listen_sockets, int num_addr_listen, int *map_socket);
 
 #endif

@@ -19,7 +19,7 @@ CC ?= gcc
 CFLAGS ?=-Wall -g $(CFLAGS_COV)
 
 LIBS=$(LDFLAGS)
-OBJS=common.o sslh-main.o probe.o
+OBJS=common.o sslh-main.o probe.o ip-map.o
 
 ifneq ($(strip $(USELIBWRAP)),)
 	LIBS:=$(LIBS) -lwrap
@@ -31,7 +31,7 @@ ifneq ($(strip $(USELIBCONFIG)),)
 	CFLAGS:=$(CFLAGS) -DLIBCONFIG
 endif
 
-all: sslh $(MAN) echosrv
+all: sslh $(MAN) echosrv getip
 
 .c.o: *.h
 	$(CC) $(CFLAGS) -D'VERSION=$(VERSION)' -c $<
@@ -49,6 +49,9 @@ sslh-select: $(OBJS) sslh-select.o Makefile common.h
 
 echosrv: $(OBJS) echosrv.o
 	$(CC) $(CFLAGS) -o echosrv echosrv.o probe.o common.o $(LIBS)
+
+getip: getip.o
+	$(CC) $(CFLAGS) -o getip getip.o $(LIBS)
 
 $(MAN): sslh.pod Makefile
 	pod2man --section=8 --release=$(VERSION) --center=" " sslh.pod | gzip -9 - > $(MAN)
@@ -77,7 +80,7 @@ uninstall:
 	update-rc.d sslh remove
 
 clean:
-	rm -f sslh-fork sslh-select echosrv $(MAN) *.o *.gcov *.gcno *.gcda *.png *.html *.css *.info 
+	rm -f sslh-fork sslh-select echosrv getip $(MAN) *.o *.gcov *.gcno *.gcda *.png *.html *.css *.info 
 
 tags:
 	ctags --globals -T *.[ch]

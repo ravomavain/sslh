@@ -190,7 +190,7 @@ int is_fd_active(int fd, fd_set* set)
  * That way, each pair of file descriptor (read from one, write to the other)
  * is monitored either for read or for write, but never for both.
  */
-void main_loop(int listen_sockets[], int num_addr_listen)
+void main_loop(int listen_sockets[], int num_addr_listen, int *map_socket)
 {
     fd_set fds_r, fds_w;  /* reference fd sets (used to init the next 2) */
     fd_set readfds, writefds; /* working read and write fd sets */
